@@ -1,15 +1,17 @@
 import { collection, getDocs, limit, orderBy, query, startAfter, where } from 'firebase/firestore'
 import { useEffect } from 'react'
 import {useState} from 'react'
+import { useParams } from 'react-router'
 import { toast } from 'react-toastify'
 import ListingItem from '../components/ListingItem'
 import Spinner from '../components/Spinner'
 import { db } from '../firebase'
 
-export default function Offers() {
+export default function Category() {
   const [listings, setListings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [lastFetchListing, setLastFetchListing] = useState(null)
+  const params = useParams()
 
   useEffect(()=> {
     const fetchListings = async()=> {
@@ -18,18 +20,20 @@ export default function Offers() {
         // get reference
         const listingsRef = collection(db, 'listings')
         // create the query
-        const q = query(listingsRef, where('offer', '==', true), orderBy ('timestamp', 'desc'), limit(4));
+        console.log('params:', params);
+        const q = query(listingsRef, where('type', '==', params.categoryName), orderBy ('timestamp', 'desc'), limit(4));
         // execute the query
         const querySnap = await getDocs(q)
         // console.log('querySnap', querySnap);
         // listingsの数を求めて最後尾のリストを取得
         const lastVisible = querySnap.docs[querySnap.docs.length - 1]
-        setLastFetchListing(lastVisible)
-
+        if (querySnap.docs.length - 1 > 3){
+          setLastFetchListing(lastVisible)
+        }
 
         const listings = []
         querySnap.forEach((doc) => {
-          console.log('Offers Page doc.data():', doc.data())
+          console.log('Category Page doc.data():', doc.data())
           return listings.push({
             id: doc.id,
             data: doc.data()
@@ -44,7 +48,7 @@ export default function Offers() {
     }
 
     fetchListings()
-  }, [])
+  }, [params.categoryName])
 
   // Load Moreボタンのクリック
   const onFetchMoreListings = async()=> {
@@ -54,7 +58,7 @@ export default function Offers() {
       // create the query
       const q = query(
         listingsRef, 
-        where('offer', '==', true), 
+        where('type', '==', params.categoryName), 
         orderBy ('timestamp', 'desc'), 
         startAfter(lastFetchListing),
         limit(4));
@@ -63,11 +67,13 @@ export default function Offers() {
       // console.log('querySnap', querySnap);
       // listingsの数を求めて最後尾のリストを取得
       const lastVisible = querySnap.docs[querySnap.docs.length - 1]
-        setLastFetchListing(lastVisible)
+      console.log('lastVisible:', lastVisible);
+      setLastFetchListing(lastVisible)
+
 
       const listings = []
       querySnap.forEach((doc) => {
-        console.log('Offers Page doc.data():', doc.data())
+        // console.log('Offers Page doc.data():', doc.data())
         return listings.push({
           id: doc.id,
           data: doc.data()
@@ -82,7 +88,7 @@ export default function Offers() {
 
   return (
     <div className='max-w-6xl mx-auto px-3'>
-      <h1 className="text-3xl text-center mt-6 font-bold mb-6">特別セール</h1>
+      <h1 className="text-3xl text-center mt-6 font-bold mb-6">{params.categoryName === 'rent' ? '賃貸物件':' 売買物件'}</h1>
       {loading ? (
         <Spinner />
       ) : listings && listings.length > 0 ? (
@@ -101,7 +107,7 @@ export default function Offers() {
         )}
         </>
       ) : (
-        <p>現在セール物件はありません</p>
+        <p>現在,{params.categoryName === 'rent' ? '賃貸':' 売買'}物件はありません</p>
       )}
 
     </div>

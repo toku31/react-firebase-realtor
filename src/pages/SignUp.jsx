@@ -1,8 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import keyImgURL from '../assets/jpg/key.jpg'
 import {AiFillEyeInvisible, AiFillEye} from 'react-icons/ai'
 import OAuth from '../components/OAuth'
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {db} from "../firebase"
+import {toast} from 'react-toastify'
 
 
 export default function SignUp() {
@@ -13,12 +17,37 @@ export default function SignUp() {
     password: "",
   })
   const { name, email, password } = formData;
+  const navigate = useNavigate()
 
   const onChange =(e)=> {
     setFormData((prevState) => ({
       ...prevState,
       [e.target.id]: e.target.value
     }))
+  }
+
+  const onSubmit = async(e)=> {
+    e.preventDefault()
+    try {
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      const user = userCredential.user
+      //  ディスプレイ名前を付与
+      updateProfile(auth.currentUser, {
+        displayName: name,
+      })
+      console.log(user)
+      const formDataCopy = {...formData}
+      delete formDataCopy.password
+      formDataCopy.timestamp = serverTimestamp()
+
+      await setDoc(doc(db, 'users', user.uid), formDataCopy)
+      toast.success('Sign up was successful')
+      navigate('/')
+    } catch (error) {
+      // console.log(error);
+      toast.error('something went wrong with the registration')
+    }
   }
 
   return (
@@ -29,7 +58,7 @@ export default function SignUp() {
           <img src={keyImgURL} alt="key" className="w-full rounded-2xl"/>
         </div>
         <div className='w-full md:w-[67%] lg:w-[40%] lg:ml-20'>
-          <form >
+          <form onSubmit={onSubmit}>
             <input 
               className="mb-6  w-full px-4 py-2 text-xl text-gray-700 bg-white border-gray-300 rounded transition ease-in-out" 
               type="text" 
